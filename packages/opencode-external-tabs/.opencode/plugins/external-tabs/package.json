@@ -1,0 +1,5 @@
+{
+  "name": "opencode-external-tabs-local",
+  "type": "module",
+  "exports": { "./tui": "./tui.ts" }
+}
