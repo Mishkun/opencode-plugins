@@ -19,14 +19,29 @@ OpenCode installs npm plugins automatically at startup.
 
 ## Use
 
-A session's tab moves to the front when:
+A session's tab moves to the front when its turn finishes or fails, or when it asks for a permission or a question. Permissions and questions from subagents move their parent session's tab.
 
-- you send it a message
-- its turn finishes or fails
-- it asks for a permission
-- it asks a question
+## Configure
 
-Permissions and questions from subagents move their parent session's tab.
+Set `options.on` to choose what moves a tab:
+
+```json
+{
+  "$schema": "https://opencode.ai/v2/cli.json",
+  "plugins": [
+    {
+      "package": "opencode-bubble-tabs",
+      "options": { "on": ["prompt", "done", "ask"] }
+    }
+  ]
+}
+```
+
+- `"done"`: its turn finishes or fails.
+- `"ask"`: it asks for a permission or a question.
+- `"prompt"`: you submit a prompt.
+
+Defaults to `["done", "ask"]`.
 
 ## Local Development
 
