@@ -11,12 +11,17 @@ beforeAll(async () => {
 
 type Handler = (event: unknown) => void
 
-async function setup(input: { tabs?: string[]; enabled?: boolean; parents?: Record<string, string> } = {}) {
+async function setup(input: {
+  options?: Record<string, unknown>
+  tabs?: string[]
+  enabled?: boolean
+  parents?: Record<string, string>
+} = {}) {
   const handlers = new Map<string, Set<Handler>>()
   const tabs = [...(input.tabs ?? ["ses_a", "ses_b", "ses_c"])]
   const moves: [string, number][] = []
   const cleanup = await bubbleTabs.setup({
-    options: {},
+    options: input.options ?? {},
     data: {
       on: (type: string, handler: Handler) => {
         const set = handlers.get(type) ?? new Set()
@@ -63,14 +68,47 @@ test.each(["session.execution.succeeded", "session.execution.failed"])("moves th
   expect(tabs).toEqual(["ses_b", "ses_a", "ses_c"])
 })
 
-test("moves the active tab to the front when you send a message", async () => {
-  const { tabs, emit } = await setup()
+test("leaves tabs in place when you submit a prompt by default", async () => {
+  const { moves, emit } = await setup()
   emit("session.inbox.enqueued", message("ses_c"))
+  expect(moves).toEqual([])
+})
+
+test("moves the tab when you submit a prompt with on prompt", async () => {
+  const { tabs, emit } = await setup({ options: { on: ["prompt"] } })
+  emit("session.inbox.enqueued", message("ses_c"))
+  expect(tabs).toEqual(["ses_c", "ses_a", "ses_b"])
+  emit("session.execution.succeeded", { sessionID: "ses_b" })
+  emit("permission.asked", { id: "per_1", sessionID: "ses_b" })
   expect(tabs).toEqual(["ses_c", "ses_a", "ses_b"])
 })
 
+test("moves only on completion with on done", async () => {
+  const { tabs, emit } = await setup({ options: { on: ["done"] } })
+  emit("permission.asked", { id: "per_1", sessionID: "ses_b" })
+  emit("form.created", { form: { sessionID: "ses_b", title: "Question", fields: [] } })
+  expect(tabs).toEqual(["ses_a", "ses_b", "ses_c"])
+  emit("session.execution.succeeded", { sessionID: "ses_b" })
+  expect(tabs).toEqual(["ses_b", "ses_a", "ses_c"])
+})
+
+test("moves only on input requests with on ask", async () => {
+  const { tabs, emit } = await setup({ options: { on: ["ask"] } })
+  emit("session.execution.succeeded", { sessionID: "ses_b" })
+  expect(tabs).toEqual(["ses_a", "ses_b", "ses_c"])
+  emit("permission.asked", { id: "per_1", sessionID: "ses_b" })
+  expect(tabs).toEqual(["ses_b", "ses_a", "ses_c"])
+})
+
+test("combines triggers", async () => {
+  const { tabs, emit } = await setup({ options: { on: ["prompt", "done", "ask"] } })
+  emit("session.inbox.enqueued", message("ses_c"))
+  emit("session.execution.succeeded", { sessionID: "ses_b" })
+  expect(tabs).toEqual(["ses_b", "ses_c", "ses_a"])
+})
+
 test("ignores non-user inbox items", async () => {
-  const { moves, emit } = await setup()
+  const { moves, emit } = await setup({ options: { on: ["prompt"] } })
   emit("session.inbox.enqueued", message("ses_c", "synthetic"))
   emit("session.inbox.enqueued", message("ses_c", "compaction"))
   expect(moves).toEqual([])
@@ -105,7 +143,6 @@ test("ignores subagent completions", async () => {
 test("ignores sessions without a tab", async () => {
   const { moves, emit } = await setup()
   emit("session.execution.succeeded", { sessionID: "ses_closed" })
-  emit("session.inbox.enqueued", message("ses_closed"))
   expect(moves).toEqual([])
 })
 
@@ -121,4 +158,10 @@ test("stops listening on cleanup", async () => {
   for (const set of handlers.values()) expect(set.size).toBe(0)
   emit("session.execution.succeeded", { sessionID: "ses_c" })
   expect(moves).toEqual([])
+})
+
+test.each([["prompts"], "done", [true], {}])("rejects invalid on option %p", (on) => {
+  expect(() => bubbleTabs.setup({ options: { on } } as unknown as Plugin.Context)).toThrow(
+    'opencode-bubble-tabs on option must be an array of "prompt", "done", or "ask"',
+  )
 })
