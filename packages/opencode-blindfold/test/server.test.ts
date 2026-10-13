@@ -83,6 +83,7 @@ test("adds the same system instruction before and after secrets are stored", asy
   const before = await system(hooks)
   expect(before).toContain("tools.blindfold.get({ name, reason })")
   expect(before).toContain("Never ask the user to paste secrets")
+  expect(before).toContain("you won't see them even if you print them")
   await store()
   expect(await system(hooks)).toBe(before)
 
