@@ -67,7 +67,7 @@ function instructions(settings: Settings) {
   return [
     `When a task needs a secret such as an API key, token, or password, call ${call}; it asks the user privately if the secret isn't stored yet.`,
     "Never ask the user to paste secrets into the chat.",
-    "Never print, return, or write secret values; they are redacted from tool output.",
+    "Secret values are redacted from tool output, so you won't see them even if you print them; you'll see `[REDACTED:NAME]` instead.",
   ].join(" ")
 }
 
