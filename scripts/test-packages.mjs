@@ -10,11 +10,9 @@ const directory = mkdtempSync(join(tmpdir(), "opencode-plugins-packages-"))
 try {
   const manifests = [...new Bun.Glob("packages/*/package.json").scanSync({ cwd: root, absolute: true })].sort()
   const dependencies = {}
-  const devDependencies = {}
   for (const manifest of manifests) {
     const workspace = dirname(manifest)
-    const { name, devDependencies: testDependencies } = JSON.parse(readFileSync(manifest, "utf8"))
-    Object.assign(devDependencies, testDependencies)
+    const { name } = JSON.parse(readFileSync(manifest, "utf8"))
     const tarball = join(directory, `${name.replaceAll("/", "-")}.tgz`)
     execFileSync(process.execPath, ["pm", "pack", "--ignore-scripts", "--filename", tarball], {
       cwd: workspace,
@@ -23,7 +21,7 @@ try {
     dependencies[name] = `file:${tarball}`
     cpSync(join(workspace, "test"), join(directory, "test", name), { recursive: true })
   }
-  writeFileSync(join(directory, "package.json"), JSON.stringify({ private: true, type: "module", dependencies, devDependencies }))
+  writeFileSync(join(directory, "package.json"), JSON.stringify({ private: true, type: "module", dependencies }))
   execFileSync(process.execPath, [
     "install", "--ignore-scripts", "--linker", "hoisted",
   ], { cwd: directory, stdio: "inherit" })
