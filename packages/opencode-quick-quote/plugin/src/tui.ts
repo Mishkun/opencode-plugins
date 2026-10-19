@@ -72,9 +72,9 @@ function mount(ctx: Plugin.Context, prompt: Prompt) {
 
   function position() {
     if (!popup.visible || !anchor) return
-    const available = Math.max(0, anchor.y - ctx.renderer.root.y)
-    // Reserve border rows separately from the eight-result cap.
-    const height = Math.min(8, Math.max(1, matches.length), available - 2)
+    // Reserve the two border rows separately from the eight-result cap.
+    const available = anchor.y - ctx.renderer.root.y - 2
+    const height = Math.min(8, Math.max(1, matches.length), available)
     if (height < 1) {
       popup.visible = false
       return
